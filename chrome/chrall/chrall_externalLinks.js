@@ -22,20 +22,20 @@
 				),
 				new ExternalLink("Bestiaire",
 					true,
-					"https://canop.org/8000/chrall/bestiaire",
+					"https://chrall.dystroy.org/gogo/bestiaire",
 					"Ce bestiaire permet de rechercher les monstres apparentés à votre cible,"
 					+ " au cas où la bulle ne vous renseignerait pas."
 				),
-				new ExternalLink("Kill-O-Mètre",
-					false,
-					"https://canop.org/chrall/killometre.html",
-					"Le Kill-O-Mètre classe les trolls en fonctions de leur kills,"
-					+ " qualitativement et quantitativement. Il vous permet de connaitre les orientations"
-					+ " d'un troll qui n'est pas dans votre vue."
-				),
+				//new ExternalLink("Kill-O-Mètre",
+				//	false,
+				//	"https://canop.org/chrall/killometre.html",
+				//	"Le Kill-O-Mètre classe les trolls en fonctions de leur kills,"
+				//	+ " qualitativement et quantitativement. Il vous permet de connaitre les orientations"
+				//	+ " d'un troll qui n'est pas dans votre vue."
+				//),
 				new ExternalLink("Chrall",
 					false,
-					"https://canop.org/chrall/",
+					"https://chrall.dystroy.org/gogo/",
 					"La page d'accueil de Chrall, avec ses divers liens,"
 					+ " en particulier pour le développement ou pour enrichir le bestiaire."
 				)
@@ -126,8 +126,7 @@
 				var checkbox = $('<input/>', { name : link.name, class: "externalLinkActivator", type: "checkbox", checked: link.display});
 				checkbox.change(function(){
 					var name = $(this).attr('name');
-					var checked = $(this).attr('checked');
-					localStorage['dysplayLink_' + name] = checked ? 'yes' : 'no';
+					localStorage['dysplayLink_' + name] = this.checked ? 'yes' : 'no';
 					var actionFrame = $('frame[name="Action"]', window.frames.frameElement.parentElement)[0];
 					var outilsDiv = $('#menuOutilsChrall', actionFrame.contentDocument);
 					outilsDiv.replaceWith(chrall.makeLinksDiv());

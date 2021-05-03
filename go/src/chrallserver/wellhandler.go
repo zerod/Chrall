@@ -32,7 +32,7 @@ func (h *WellHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				}
 				var bucketText = $("#bucket").val().replace(/\?/g, "-"); // si je ne fais pas cette élimination des "?", jquery fait des trucs bizarres à l'envoi
 				$.post(
-					"/chrall/jsonp",
+					"jsonp",
 					JSON.stringify(
 						{
 							action: "pour",
@@ -56,7 +56,7 @@ func (h *WellHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				$("#cleanBtn").hide();
 			}
 		</script>
-		<p>Vous êtes au bord du <span class=emphase>Puits</span> de <a class=gogo href=/8000/chrall>gOgOchrall</a></p>
+		<p>Vous êtes au bord du <span class=emphase>Puits</span> de <a class=gogo href=.>gOgOchrall</a></p>
 		<p>Copiez vos CDM ci-dessous :
 			<form>
 				<textarea id=bucket rows=20></textarea>

@@ -54,12 +54,53 @@
 	};
 
 	chrall.addActionPointDistance = function(cells, x, y, z){
+		var $cell = $(cells[0]).attr({ style: 'width:5rem', align: 'center'});
 		if (chrall.isOptionDisabled('view-show-distance-in-view')) {
 			return;
 		}
 		var dist = chrall.distanceFromPlayer(x, y, z);
 		if (dist > 0) {
-			$(cells[0]).append(" (" + dist + " PA)").width("10ex");
+			$cell.append(` (${dist} PA)`);
+		}
+	};
+
+	// Icone du projo
+	chrall.projoIcon = function(cells, nameCell, item){
+		if (chrall.player().race !== "Tomawak"){
+			return;
+		}
+		var dist = parseInt(cells[0].innerHTML);
+		if (dist <= chrall.player().talents["Projectile Magique"].range && item.z === chrall.player().z) {
+			var projoImg = ` <img class='projo' data-dist='${dist}' src='${chrome.extension.getURL("/images/projo.png")}' />`;
+			$(nameCell).append(projoImg);
+			item.icons += projoImg;
+		}
+	};
+
+	// Icone de mission
+	chrall.missionIcon = function (nameCell, item) {
+		for (var id in chrall.player().missions) {
+			var mission = chrall.player().missions[id];
+			var isRace = !mission.race || item.name.indexOf(mission.race) > -1;
+			var isLevel = mission.minLevel <= item.level && item.level <= mission.maxLevel;
+			if (isRace && isLevel) {
+				var missionImg = ` <img class='mission' data-id='${id}' src='${chrome.extension.getURL("/images/mission.png")}' />`;
+				$(nameCell).append(missionImg);
+				item.icons += missionImg;
+			}
+		}
+	};
+
+	// Icone de lancer de potions
+	chrall.potionIcon = function (cells, nameCell, item) {
+		if (!chrall.player().talents["Lancer de Potions"]){
+			return;
+		}
+		var dist = parseInt(cells[0].innerHTML);
+		if (dist <= chrall.player().talents["Lancer de Potions"].range && item.z === chrall.player().z){
+			var potionImg = ` <img class='potion' data-dist='${dist}' src='${chrome.extension.getURL("/images/potion.png")}' />`;
+			$(nameCell).append(potionImg);
+			item.icons += potionImg;
 		}
 	};
 
@@ -71,6 +112,13 @@
 		if (table === undefined) return;
 		var lines = table.querySelectorAll("tbody tr");
 		chrall.grid.nbMonstersInView = lines.length;
+
+		// Add level cell
+		if (chrall.isOptionEnabled('view-display-monster-level', 'yes')) {
+			var $nivalTitle = $("<th/>", { width: '3rem', text: 'Nival' });
+			$('tr.mh_tdtitre', table).find('th').eq(0).after($nivalTitle);
+		}
+
 		for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
 			var item = new chrall.Monster();
 			var cells = lines[lineIndex].children;
@@ -81,15 +129,30 @@
 			item.id = parseInt(cells[i++].textContent);
 			var nameCell = cells[i++];
 			item.setName(nameCell.textContent);
-			$(nameCell.children[0]).attr("id", item.id + "_monster"); // !! Analyze AND modify : inject monster id
+			nameCell.children[0].id = item.id + "_monster"; // !! Analyze AND modify : inject monster id
+			if (chrall.isSeeingHidden(nameCell.innerText)) {
+				var vlcImg = " <img class='vlc' src='" + chrome.extension.getURL("/images/vlc.png") + "' />";
+				nameCell.innerHTML += vlcImg;
+				item.icons += vlcImg;
+			}
 			item.x = parseInt(cells[i++].textContent);
 			item.y = parseInt(cells[i++].textContent);
 			item.z = parseInt(cells[i++].textContent);
 			item.hasLink = !!nameCell.children[0].href;
+			item.level = chrall.computeLevel(item.name, item.ageTag);
 			var cell = grid.getCellNotNull(item.x, item.y);
 			if (cell) cell.addMonster(item);
 			else grid.outOfGrid.push(item);
 			chrall.addActionPointDistance(cells, item.x, item.y, item.z);
+			chrall.projoIcon(cells, nameCell, item);
+			chrall.missionIcon(nameCell, item);
+			chrall.potionIcon(cells, nameCell, item);
+			// Add monster's level
+			if (chrall.isOptionEnabled('view-display-monster-level', 'yes')) {
+				var $nivalCell = $("<td/>", { text: item.level, class: "level", align: "center" });
+				chrall.triggerBubble($nivalCell, chrall.getPxOnKill(item.level), "bub_monster");
+				$(cells[0]).after($nivalCell);
+			}
 		}
 	};
 
@@ -100,7 +163,11 @@
 		table = table.get(0);
 		if (!table) return;
 		var	$headRow = $(table).find("thead tr").eq(0);
-		$headRow.prepend("<td>");
+		var $checkAll = $("<td align='center' style='width:1rem'><input type='checkbox'/></td>");
+		$checkAll.children().click(function () {
+			$("input[name='cb_troll']").click();
+		});
+		$headRow.prepend($checkAll);
 		var	nbCols = $headRow.find("td,th").length;
 
 		var lines = table.querySelectorAll("tbody tr");
@@ -122,14 +189,16 @@
 			});
 			// les trolls intangibles sont marqués par le style 'mh_trolls_0' au lieu de 'mh_trolls_1'
 			item.isIntangible = $(nameCell).html().indexOf("mh_trolls_0")>=0;
-			chrall.triggerBubble($(cells[i]), chrall.getPxOnKill(cells[i].textContent), "bub_troll");
 			item.guilde = cells[i++].textContent;
+			chrall.triggerBubble($(cells[i]), chrall.getPxOnKill(cells[i].textContent), "bub_troll");
 			item.level = cells[i++].textContent;
 			item.race = cells[i++].textContent;
 			item.x = parseInt(cells[i++].textContent);
 			item.y = parseInt(cells[i++].textContent);
 			item.z = parseInt(cells[i++].textContent);
 			chrall.addActionPointDistance(cells, item.x, item.y, item.z);
+			chrall.projoIcon(cells, nameCell, item);
+			chrall.potionIcon(cells, nameCell, item);
 			var selectBox = $('<td>', { align: 'center'})
 			.append($('<input/>', {type: 'checkbox', name: 'cb_troll', value: item.id}));
 			$(line).prepend(selectBox);
@@ -158,20 +227,28 @@
 		if (table===undefined) return;
 		var lines = table.querySelectorAll("tbody tr");
 		grid.nbMushroomsInView = lines.length;
-		for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-			var item = new chrall.Thing();
-			var cells = lines[lineIndex].children;
-			var i = 1;
-			if (cells.length>=6) {
-				item.actions = cells[i++].innerHTML;
+		try {
+			for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+				var item = new chrall.Thing();
+				var cells = lines[lineIndex].children;
+				console.log('cells:', cells.length);
+				let i = 1;
+				if (cells.length>=7) {
+					// c'est le cas si le "menu d'actions contextuelles" est
+					//  coché dans les options de vue de MH
+					item.actions = cells[i++].innerHTML;
+				}
+				i += 1;
+				var nameCell = cells[i++];
+				item.setName(nameCell.textContent);
+				item.x = parseInt(cells[i++].textContent);
+				item.y = parseInt(cells[i++].textContent);
+				item.z = parseInt(cells[i++].textContent);
+				grid.getCellNotNull(item.x, item.y).addMushroom(item);
+				chrall.addActionPointDistance(cells, item.x, item.y, item.z);
 			}
-			var nameCell = cells[i++];
-			item.setName(nameCell.textContent);
-			item.x = parseInt(cells[i++].textContent);
-			item.y = parseInt(cells[i++].textContent);
-			item.z = parseInt(cells[i++].textContent);
-			grid.getCellNotNull(item.x, item.y).addMushroom(item);
-			chrall.addActionPointDistance(cells, item.x, item.y, item.z);
+		} catch (e) {
+			console.warn("Erreur lors du décodage de la table des champignons");
 		}
 	};
 

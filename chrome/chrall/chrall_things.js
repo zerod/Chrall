@@ -10,11 +10,12 @@ var chrall = chrall || {};
  *
  * Le cas des caractéristiques sans dés (par exemple la vue) est simplement couvert par un nombre de dés à 0
  */
-function Characteristic(diceNumber, diceSize, physicalBonus, magicalBonus){
+function Characteristic(diceNumber, diceSize, physicalBonus, magicalBonus, turnBonus){
 	this.diceNumber = isNaN(diceNumber) ? 0 : diceNumber;
 	this.diceSize = diceSize;
 	this.physicalBonus = isNaN(physicalBonus) ? 0 : physicalBonus;
 	this.magicalBonus = isNaN(magicalBonus) ? 0 : magicalBonus;
+	this.turnBonus = isNaN(turnBonus) ? 0 : turnBonus;
 }
 chrall.Characteristic = Characteristic;
 Characteristic.prototype.readRow = function(row){
@@ -34,10 +35,10 @@ Characteristic.prototype.readRow = function(row){
 	return this;
 };
 Characteristic.prototype.getMean = function(){
-	return this.diceNumber * (this.diceSize + 1) / 2 + this.physicalBonus + this.magicalBonus;
+	return (this.diceNumber + this.turnBonus) * (this.diceSize + 1) / 2 + this.physicalBonus + this.magicalBonus;
 };
 Characteristic.prototype.getCriticalMean = function(){
-	return Math.floor(this.diceNumber * 1.5) * (this.diceSize + 1) / 2 + this.physicalBonus + this.magicalBonus;
+	return Math.floor((this.diceNumber + this.turnBonus) * 1.5) * (this.diceSize + 1) / 2 + this.physicalBonus + this.magicalBonus;
 };
 
 //////////////////////////////////////////////////////////////////////// Talent
@@ -56,6 +57,13 @@ Talent.prototype.readRow = function($row){
 	this.name = $cells.eq(1).find("a").text().trim();
 	this.level = parseInt($cells.eq(-6).text()) || 1;
 	this.mastering = parseInt($cells.eq(-5).text());
+
+	if (this.name === 'Lancer de Potions'){
+		this.range = Math.floor(2 + chrall.player().totalSight / 5);
+	}
+	if (this.name === 'Projectile Magique'){
+		this.range = chrall.projoRange(chrall.player().totalSight);
+	}
 };
 
 //////////////////////////////////////////////////////////////////////// Mouche
@@ -87,6 +95,7 @@ function Thing(x, y, z){
 	this.x = x;
 	this.y = y;
 	this.z = z;
+	this.icons = "";
 }
 chrall.Thing = Thing;
 Thing.prototype.horizontalDistance = function(x, y){ // distance horizontale
@@ -185,6 +194,8 @@ function Troll(x, y, z){
 	this.isIntangible = false;
 	this.magicalAttackMultiplier = 1;
 	this.magicalDamageMultiplier = 1;
+	this.talents = {};
+	this.missions = {};
 }
 chrall.Troll = Troll;
 Troll.prototype = new Thing();
@@ -214,9 +225,6 @@ Troll.prototype.cleanFlies = function(){
 };
 
 Troll.prototype.addTalent = function(t){
-	if (!this.talents) {
-		this.talents = new Object();
-	}
 	this.talents[t.name] = t;
 };
 

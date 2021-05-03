@@ -108,16 +108,19 @@
 		});
 	}
 
-	function append3D($cell, attributes, differentLevel, actions){
+	function append3D($cell, attributes, differentLevel, actions, icons){
 		// TODO : span name = 3D // TODO plus tard name ==> class
 		var $a = $("<a/>", attributes);
-		if (actions) {
-			$a.prepend(actions);
-		}
+		var $div = $("<div/>");
 		if (differentLevel) {
-			$cell.append($("<div/>").append($("<span/>", {name: "3D"}).append($a)));
-		} else {
-			$cell.append($("<div/>").append($a));
+			$div.append($("<span/>", {name: "3D"}));
+		}
+		$cell.append($div.append($a));
+		if (actions) {
+			$div.prepend(actions);
+		}
+		if (icons) {
+			$div.append(icons);
 		}
 		return $a;
 	}
@@ -134,12 +137,12 @@
 				class: 'ch_troll',
 				href:    'javascript:EPV(' + troll.id + ');',
 				style:   distanceStyle(verticalDistanceHint, troll.z),
-				message: "en X=" + troll.x + " Y=" + troll.y + " Z=" + troll.z + "<br>Distance horizontale : " + horizontalDist
+				message: "en X=" + troll.x + " Y=" + troll.y + " Z=" + troll.z + "<br>Distance horizontale : " + horizontalDist + " (" + chrall.distanceFromPlayer(troll.x, troll.y, troll.z) + " PA)<br>" + chrall.getPxOnKill(troll.level)
 			};
 			addPosition(troll, attributes);
 			if (troll.team) attributes.team = troll.team;
 			if (troll.isIntangible) attributes.intangible = 1;
-			var $a = append3D($cell, attributes, differentLevel, troll.actions);
+			var $a = append3D($cell, attributes, differentLevel, troll.actions, troll.icons);
 			chrall.cdb.getTroll(troll.id, function(t){
 				if (t && t.team) $a.attr('team', t.team);
 			});
@@ -186,7 +189,7 @@
 			text:    monster.z + ": " + monsterName(compactNames, maxLength, monster),
 			href:    'javascript:EMV(' + monster.id + ',750,550);',
 			style:   distanceStyle(verticalDistanceHint, monster.z),
-			message: monster.fullName + ' ( ' + monster.id + ' ) en X=' + monster.x + ' Y=' + monster.y + ' Z=' + monster.z + '<br>Distance horizontale : ' + horizontalDistance
+			message: monster.fullName + ' ( ' + monster.id + ' ) en X=' + monster.x + ' Y=' + monster.y + ' Z=' + monster.z + '<br>Distance horizontale : ' + horizontalDistance + " (" + chrall.distanceFromPlayer(monster.x, monster.y, monster.z) + " PA)"
 		};
 		return attributes;
 	}
@@ -228,7 +231,7 @@
 						var attributes = monsterAttributes(monster, compactNames, maxLength, verticalDistanceHint, horizontalDistance);
 						addPosition(monster, attributes);
 						if (!monster.isGowap) attributes.nom_complet_monstre = monster.fullName;
-						append3D($monsterContainer, attributes, differentLevel, monster.actions);
+						append3D($monsterContainer, attributes, differentLevel, monster.actions, monster.icons);
 					}
 				}
 			}
@@ -240,7 +243,7 @@
 				attributes = monsterAttributes(monster, compactNames, maxLength, verticalDistanceHint, horizontalDistance);
 				addPosition(monster, attributes);
 				if (!monster.isGowap) attributes.nom_complet_monstre = monster.fullName;
-				append3D($cell, attributes, differentLevel, monster.actions);
+				append3D($cell, attributes, differentLevel, monster.actions, monster.icons);
 			}
 		}
 
@@ -313,7 +316,7 @@
 			var wall = cell.walls[i];
 			if (wall.name == "Mur") {
 				//On met une image de mur en background et on n'affiche rien dans la case, chrall suffit pour obtenir les coordonnées.
-				$cell.append($("<div/>", {style: "background-image:url(http://games.mountyhall.com/mountyhall/View/IMG_LABY/mur.gif);background-repeat:repeat;min-height:160;min-width:160"}));
+				$cell.append($("<div/>", {style: "background-image:url(https://games.mountyhall.com/mountyhall/View/IMG_LABY/mur.gif);background-repeat:repeat;min-height:160;min-width:160"}));
 			} else {
 				// Compte le nombre d'éléments dans la case. L'utilité sera d'estimer plus ou moins la hauteur de la case en fonction de ce qu'elle contient.
 				// On aurait pu le faire avec un compteur tout au long du parcours global des éléments, mais comme l'utilité sera très spécifique au labyrinthe, autant le faire ici.
@@ -375,8 +378,7 @@
 					'class': 'ch_object',
 					bub:     treasure.id + " : " + treasure.name,
 					text:    treasure.z + ": " + (compactNames ? compactText(treasure.name, maxLength) : treasure.name),
-					display: 'block',
-					style:   distanceStyle(verticalDistanceHint, level)
+					style:   distanceStyle(verticalDistanceHint, level) + 'display:inline;'
 				};
 				addPosition(treasure, attributes);
 				if (treasure.hasLink) attributes.href = "javascript:Enter('/mountyhall/View/TresorHistory2.php?ai_IDTresor=" + treasure.id + "',750,500);";
@@ -464,6 +466,7 @@
 		var compactNames = chrall.isOptionEnabled('view-grid-compact-names');
 		var maxLength = chrall.integerOption('view-grid-compact-names-length', 20);
 		var verticalDistanceHint = chrall.isOptionEnabled('view-grid-vertical-distance-hint');
+		var coloredCell = chrall.isOptionEnabled('view-display-colored-cell');
 
 		for (y = chrall.ymax; y >= chrall.ymin; y--) {
 			$tr = $("<tr/>");
@@ -479,14 +482,16 @@
 				};
 				var $cell = $("<td/>", cellAttributes);
 
-				(function($cell){
-					// on va éventuellement colorier la case si un message #chrall set cells dans miaou nous l'a demandé
-					chrall.cdb.getCell(x+','+y, function(cell){
-						if (cell && cell.team) {
-							$cell.attr('team', cell.team);
-						}
-					});
-				})($cell);
+				if (coloredCell){
+					(function($cell){
+						// on va éventuellement colorier la case si un message #chrall set cells dans miaou nous l'a demandé
+						chrall.cdb.getCell(x+','+y, function(cell){
+							if (cell && cell.team) {
+								$cell.attr('team', cell.team);
+							}
+						});
+					})($cell);
+				}
 
 				$tr.append($cell);
 				if ((chrall.horizontalViewLimit == 0) && ( (player.x != x) || (player.y != y) )) {
@@ -585,8 +590,7 @@
 		$('td[height="1000"]').removeAttr('height'); // c'est compliqué souvent de déperversifier les pages MH...
 
 		//> on colle en haut à droite les liens [Refresh] et [Logout]
-		var refreshLogout = $("table table div");
-		refreshLogout.addClass("floatTopRight");
+		$("#mhPlay div:first-child").addClass("floatTopRight");
 
 		//> on reconstruit la vue en répartissant les tables dans des onglets et en mettant la grille dans le premier
 		var $tabs = $("<ul/>", {id: "tabs_view", 'class': "tabs", view: "yes"});
@@ -606,10 +610,11 @@
 		chrall.addTab($tabs, "#tabSettings", "Réglages");
 
 
-		if (!chrall.hallIsAccro()) {
-			chrall.addTab($tabs, "#tabPartages", "Partages");
-			chrall.addTab($tabs, "#tabRecherche", "Recherche");
-		}
+		// temporary removal, will be totally gone if nobody complains
+		//if (!chrall.hallIsAccro()) {
+		//	chrall.addTab($tabs, "#tabPartages", "Partages");
+		//	chrall.addTab($tabs, "#tabRecherche", "Recherche");
+		//}
 		var $tabContainer = $("<div/>", { 'class': "tab_container", view: "yes"});
 		$("table.mh_tdborder").first().parent().parent().prepend($tabs);
 		$tabContainer.insertAfter($tabs);
@@ -632,8 +637,8 @@
 		$tabContainer.append(chrall.makeTabDiv("tabCenotaphs"));
 		$tabContainer.append(chrall.makeTabDiv("tabSettings"));
 		if (!chrall.hallIsAccro()) {
-			$tabContainer.append(chrall.makeTabDiv("tabPartages"));
-			$tabContainer.append(chrall.makeTabDiv("tabRecherche"));
+			//$tabContainer.append(chrall.makeTabDiv("tabPartages"));
+			//$tabContainer.append(chrall.makeTabDiv("tabRecherche"));
 			if (chrall.isInLaby) {
 				$tabContainer.append(chrall.makeTabDiv("tabWalls"));
 			}
@@ -703,9 +708,8 @@
 				for (var i = 0; i < os.length; i++) {
 					os[i].style.display = display;
 				}
-				var $viewFilter = $('#' + key);
-				if (display != 'none') $viewFilter.attr("checked", "checked");
-				else $viewFilter.removeAttr("checked");
+				var viewFilter = document.getElementById(key);
+				viewFilter.checked = display != "none";
 			}
 		}
 

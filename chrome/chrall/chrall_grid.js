@@ -90,11 +90,15 @@ chrall.gridLive = function(){
 	function getMonsterArgs(link){
 		var player = chrall.player();
 		var args = {};
-		var monsterId = parseInt(link.attr('id'));
+		var monsterId = parseInt(link[0].href.replace("javascript:EMV(", ""));
 		var tokens = link.text().split(':');
 		var linkText = null == link.attr("nom_complet_monstre") ? tokens[tokens.length - 1].trim() : link.attr("nom_complet_monstre").trim();
 		var nomMonstre = encodeURIComponent(linkText);
 		args.text = link.attr('message');
+		if (args.text) {
+			var level = parseInt($("#" + monsterId + "_monster").closest("tr").find("td.level").text());
+			args.text += "<br>" + chrall.getPxOnKill(level);
+		}
 		var imgUrl = chrall.getMonsterMhImageUrl(linkText);
 		if (imgUrl != null) {
 			args.leftCol = "<img class=illus src=\"" + imgUrl + "\">";
@@ -107,6 +111,33 @@ chrall.gridLive = function(){
 		return args;
 	}
 	chrall.bubbleLive('a[href*="EMV"]', 'bub_monster', getMonsterArgs);
+	chrall.bubbleLive('img.vlc', 'bub_monster', function(){
+		return {text: 'Voit le caché !'};
+	});
+	chrall.bubbleLive('img.projo', 'bub_monster', function(img){
+		var damages = chrall.projoDamage(chrall.player().talents["Projectile Magique"].range - img.data('dist'));
+		var att = 3.5 * chrall.player().sight.diceNumber + chrall.player().attac.magicalBonus;
+		return {text: `<table>
+		<tr><td colspan='2' align='center'>Projectile Magique</td></tr>
+		<tr><td>Portée</td><td> : ${img.data('dist')}</td></tr>
+		<tr><td>Attaque moyenne</td><td> : ${att} (${chrall.player().sight.diceNumber} D6 ${chrall.itoa(chrall.player().attac.magicalBonus)})</td></tr>
+		<tr><td>Dégâts moyens</td><td> : ${damages.damage} / ${damages.damageCrit}</td></tr>
+		</table>`};
+	});
+	chrall.bubbleLive('img.mission', 'bub_monster', function (img) {
+		return {text: `<div class=bubbleTitle>Mission ${img.data('id')}</div>${chrall.player().missions[img.data('id')].step}`};
+	});
+	chrall.bubbleLive('img.potion', 'bub_monster', function(img){
+		var bv = Math.min(10, (1 - img.data('dist')) * 10 + chrall.player().totalSight);
+		var cppc = chrall.player().talents["Lancer de Potions"].mastering + chrall.player().concentration;
+		return {text: `<table>
+		<tr><td colspan='2' align='center'>Lancer de Potions</td></tr>
+		<tr><td>Jet de toucher</td><td> : ${cppc + bv} %</td></tr>
+		</table>`};
+	});
+	$('img.mission').click(function() {
+		document.location = `https://games.mountyhall.com/mountyhall/MH_Missions/Mission_Equipe.php?ai_idMission=${$(this).data('id')}`;
+	});
 
 	//> popup sur les trolls
 	function getTrollArgs(link){
@@ -173,41 +204,41 @@ chrall.gridLive = function(){
 	};
 
 	// outillage des liens d'ouvertures de vue "zoom"
-	$(document).on('click', 'a[name="zoom"]', function(){
-		var player = chrall.player();
-		if (chrall.compteChrallActif()) {
-			var $link = $(this);
-			var x = $link.attr('x');
-			var y = $link.attr('y');
-			var z = $link.attr('z');
-			var url = chrall.serveurPrive() + "vue?asker=" + player.id + "&mdpr=" + chrall.mdpCompteChrall() + "&x=" + x + "&y=" + y + "&z=" + z + "&tresors=1";
-			var $zoom = $('#zoom');
-			$zoom.show();
-			$('#zoom_content').load(url, function(){
-				setTimeout(function(){
-					// centrage de la vue
-					chrall.hideOm();
-					chrall.scrollInProgress = true;
-					var $targetCell = $('#zoom_content').find('td[grid_x="' + x + '"][grid_y="' + y + '"]');
-					var $grid_holder = $('#zoom');
-					$grid_holder.animate(
-						{
-							scrollLeft: ($grid_holder.scrollLeft() + $targetCell.offset().left + ($targetCell.innerWidth() - window.innerWidth) / 2),
-							scrollTop: ($grid_holder.scrollTop() + $targetCell.offset().top + ($targetCell.innerHeight() - window.innerHeight) / 2)
-						},
-						'slow',
-						function(){
-							chrall.scrollInProgress = false;
-						}
-					);
-				}, 200);
-			});
-			$('#3D').attr("checked", "checked"); // à chaque ouverture on est en 3D initialement
-			$zoom.dragscrollable({dragSelector: '#zoom_content'});
-		} else {
-			alert("Un compte Chrall actif est nécessaire pour utiliser cette fonction.");
-		}
-	});
+	//$(document).on('click', 'a[name="zoom"]', function(){
+	//	var player = chrall.player();
+	//	if (chrall.compteChrallActif()) {
+	//		var $link = $(this);
+	//		var x = $link.attr('x');
+	//		var y = $link.attr('y');
+	//		var z = $link.attr('z');
+	//		var url = chrall.serveurPrive() + "vue?asker=" + player.id + "&mdpr=" + chrall.mdpCompteChrall() + "&x=" + x + "&y=" + y + "&z=" + z + "&tresors=1";
+	//		var $zoom = $('#zoom');
+	//		$zoom.show();
+	//		$('#zoom_content').load(url, function(){
+	//			setTimeout(function(){
+	//				// centrage de la vue
+	//				chrall.hideOm();
+	//				chrall.scrollInProgress = true;
+	//				var $targetCell = $('#zoom_content').find('td[grid_x="' + x + '"][grid_y="' + y + '"]');
+	//				var $grid_holder = $('#zoom');
+	//				$grid_holder.animate(
+	//					{
+	//						scrollLeft: ($grid_holder.scrollLeft() + $targetCell.offset().left + ($targetCell.innerWidth() - window.innerWidth) / 2),
+	//						scrollTop: ($grid_holder.scrollTop() + $targetCell.offset().top + ($targetCell.innerHeight() - window.innerHeight) / 2)
+	//					},
+	//					'slow',
+	//					function(){
+	//						chrall.scrollInProgress = false;
+	//					}
+	//				);
+	//			}, 200);
+	//		});
+	//		$('#3D').attr("checked", "checked"); // à chaque ouverture on est en 3D initialement
+	//		$zoom.dragscrollable({dragSelector: '#zoom_content'});
+	//	} else {
+	//		alert("Un compte Chrall actif est nécessaire pour utiliser cette fonction.");
+	//	}
+	//});
 	// lien de fermeture de la "fenêtre" de zoom
 	$(document).on('click', '#btn_close_zoom', function(){
 		$('#zoom').hide();
